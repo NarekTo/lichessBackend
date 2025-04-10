@@ -17,13 +17,16 @@ app.use(compression());
 
 // Define allowed origins
 const allowedOrigins = [
+  // Development URLs
   'http://localhost:3000',
   'http://localhost:8080',
-  'https://lichess-chess-nexus.lovable.app/',
-  'https://lovable.dev/projects/d96b4720-62ca-44b8-8bee-76160993d795/',
-  'https://breakroomchess.com/',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:8080',
+  
+  // Production URLs (without trailing slashes)
+  'https://lichess-chess-nexus.lovable.app',
+  'https://lovable.dev',
+  'https://breakroomchess.com',
   'https://lichessconnector.ey.r.appspot.com'
 ];
 
@@ -44,11 +47,13 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    // Remove any trailing slashes from the origin
-    const normalizedOrigin = origin.replace(/\/$/, '');
+    // Check if the origin or its base path is allowed
+    const isAllowed = allowedOrigins.some(allowedOrigin => 
+      origin.startsWith(allowedOrigin)
+    );
     
-    if (allowedOrigins.indexOf(normalizedOrigin) === -1) {
-      console.log('Blocked origin:', origin); // Add logging
+    if (!isAllowed) {
+      console.log('Blocked origin:', origin);
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
     }
@@ -807,6 +812,11 @@ app.get('/api/chess/game/export/:gameId', async (req, res) => {
             details: error.message
         });
     }
+});
+
+// Add a health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Error handling middleware
