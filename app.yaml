@@ -9,7 +9,8 @@ env_variables:
   PORT: "8080"
   FRONTEND_URL: "https://lichess-chess-nexus.lovable.app"
 
-instance_class: F1
+# For basic scaling, use B instance class instead of F
+instance_class: B1
 
 # Choose only one scaling option
 basic_scaling:
