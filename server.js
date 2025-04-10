@@ -47,6 +47,8 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
+    console.log('Request origin:', origin); // Add logging
+    
     // Check if the origin or its base path is allowed
     const isAllowed = allowedOrigins.some(allowedOrigin => 
       origin.startsWith(allowedOrigin)
@@ -54,18 +56,18 @@ app.use(cors({
     
     if (!isAllowed) {
       console.log('Blocked origin:', origin);
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+      return callback(new Error('CORS not allowed'), false);
     }
+    
     return callback(null, true);
   },
-  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
-  exposedHeaders: ['Content-Length', 'X-Requested-With']
+  credentials: true,
+  maxAge: 86400 // Cache preflight requests for 24 hours
 }));
 
-// Add OPTIONS handling for preflight requests
+// Handle preflight requests
 app.options('*', cors());
 
 // At the top of the file, after requiring dependencies
@@ -832,4 +834,9 @@ app.use((err, req, res, next) => {
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Add a test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API is working' });
 });

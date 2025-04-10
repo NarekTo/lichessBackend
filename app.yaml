@@ -18,12 +18,18 @@ automatic_scaling:
   target_throughput_utilization: 0.6
 
 handlers:
+  # Handle CORS preflight requests
   - url: /.*
     script: auto
     secure: always
-    http_headers:
-      Access-Control-Allow-Origin: "*"
-      Access-Control-Allow-Methods: "GET, POST, OPTIONS, PUT, DELETE"
-      Access-Control-Allow-Headers: "Origin, X-Requested-With, Content-Type, Accept, Authorization"
 
-env: standard 
+# Add basic scaling to ensure consistent performance
+basic_scaling:
+  max_instances: 10
+  idle_timeout: 10m
+
+env: standard
+
+# Add VPC access configuration if needed
+vpc_access_connector:
+  name: projects/lichessconnector/locations/europe-west3/connectors/app-connector 
