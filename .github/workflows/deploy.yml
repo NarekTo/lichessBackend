@@ -27,6 +27,23 @@ jobs:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
         install_components: 'beta,app-engine-python'
 
+    - name: Grant Storage Permissions
+      run: |
+        # Grant Storage Admin role to the service account
+        gcloud projects add-iam-policy-binding ${{ secrets.GCP_PROJECT_ID }} \
+          --member="serviceAccount:lichess-connector-account@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com" \
+          --role="roles/storage.admin"
+        
+        # Grant Storage Object Viewer role
+        gcloud projects add-iam-policy-binding ${{ secrets.GCP_PROJECT_ID }} \
+          --member="serviceAccount:lichess-connector-account@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com" \
+          --role="roles/storage.objectViewer"
+        
+        # Grant Storage Object Creator role
+        gcloud projects add-iam-policy-binding ${{ secrets.GCP_PROJECT_ID }} \
+          --member="serviceAccount:lichess-connector-account@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com" \
+          --role="roles/storage.objectCreator"
+
     - name: Verify authentication
       run: |
         gcloud auth list
