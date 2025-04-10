@@ -19,8 +19,9 @@ app.use(compression());
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:8080',
-  'https://lichess-chess-nexus.lovable.app',
-  'https://breakroomchess.com',
+  'https://lichess-chess-nexus.lovable.app/',
+  'https://lovable.dev/projects/d96b4720-62ca-44b8-8bee-76160993d795/',
+  'https://breakroomchess.com/',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:8080',
   'https://lichessconnector.ey.r.appspot.com'
