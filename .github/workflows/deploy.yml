@@ -31,10 +31,23 @@ jobs:
         sed -i "s|your_jwt_secret|${{ secrets.JWT_SECRET }}|g" app.yaml
         sed -i "s|your_frontend_url|${{ secrets.FRONTEND_URL }}|g" app.yaml
 
-    - name: Create App Engine application
+    - name: Check and Create App Engine application
       run: |
-        gcloud app create --region=us-central || true
+        echo "Checking if App Engine exists..."
+        if ! gcloud app describe > /dev/null 2>&1; then
+          echo "Creating new App Engine application in us-central..."
+          gcloud app create --region=us-central --project=${{ secrets.GCP_PROJECT_ID }}
+        else
+          echo "App Engine application already exists."
+        fi
+
+    - name: Enable necessary APIs
+      run: |
+        gcloud services enable appengine.googleapis.com
+        gcloud services enable cloudbuild.googleapis.com
 
     - name: Deploy to App Engine
       run: |
-        gcloud app deploy app.yaml --quiet 
+        echo "Starting deployment..."
+        gcloud app deploy app.yaml --quiet --project=${{ secrets.GCP_PROJECT_ID }}
+        echo "Deployment completed." 
