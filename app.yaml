@@ -1,0 +1,20 @@
+runtime: nodejs18
+
+env_variables:
+  MONGODB_URI: "your_mongodb_uri"
+  LICHESS_TOKEN: "your_lichess_token"
+  JWT_SECRET: "your_jwt_secret"
+  PORT: "5001"
+  FRONTEND_URL: "your_frontend_url"
+
+instance_class: F1
+
+automatic_scaling:
+  target_cpu_utilization: 0.65
+  min_instances: 1
+  max_instances: 10
+
+handlers:
+  - url: /.*
+    script: auto
+    secure: always 
