@@ -19,11 +19,11 @@ app.use(compression());
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:8080',
-  'https://lichess-chess-nexus.lovable.app',  // Remove trailing slash
-  'https://breakroomchess.com',  // Remove trailing slash
+  'https://lichess-chess-nexus.lovable.app',
+  'https://breakroomchess.com',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:8080',
-  'https://lichessconnector.ey.r.appspot.com'  // Add App Engine URL
+  'https://lichessconnector.ey.r.appspot.com'
 ];
 
 // Socket.io Configuration with updated CORS
@@ -47,6 +47,7 @@ app.use(cors({
     const normalizedOrigin = origin.replace(/\/$/, '');
     
     if (allowedOrigins.indexOf(normalizedOrigin) === -1) {
+      console.log('Blocked origin:', origin); // Add logging
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
     }
@@ -54,8 +55,12 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Accept', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-Requested-With']
 }));
+
+// Add OPTIONS handling for preflight requests
+app.options('*', cors());
 
 // At the top of the file, after requiring dependencies
 const inMemoryGames = new Map();
@@ -250,12 +255,14 @@ app.get('/api/chess/game/:gameId', async (req, res) => {
 // Update the create game endpoint
 app.post('/api/chess/create-game', async (req, res) => {
   try {
+    console.log('Received create game request');
+    
     const defaultTimeControl = {
-      time: 600, // 10 minutes
-      increment: 5  // 5 seconds increment
+      time: 600,
+      increment: 5
     };
 
-    // Create a challenge on Lichess
+    console.log('Creating Lichess challenge...');
     const response = await axios.post(
       'https://lichess.org/api/challenge/open',
       {
@@ -275,11 +282,13 @@ app.post('/api/chess/create-game', async (req, res) => {
       }
     );
 
-    // Generate unique tokens for white and black players
+    console.log('Lichess response:', response.data);
+
+    // Generate unique tokens
     const whiteToken = uuidv4();
     const blackToken = uuidv4();
 
-    // Save game to in-memory store with player tokens
+    // Save game
     inMemoryGames.set(response.data.id, {
       id: response.data.id,
       whiteToken,
@@ -290,16 +299,20 @@ app.post('/api/chess/create-game', async (req, res) => {
       createdAt: new Date()
     });
 
-    res.json({
+    const result = {
       success: true,
       gameId: response.data.id,
       whiteUrl: `${process.env.FRONTEND_URL}/game/${response.data.id}/white?token=${whiteToken}`,
       blackUrl: `${process.env.FRONTEND_URL}/game/${response.data.id}/black?token=${blackToken}`,
       spectatorUrl: `${process.env.FRONTEND_URL}/game/${response.data.id}`
-    });
+    };
+
+    console.log('Sending response:', result);
+    res.json(result);
 
   } catch (error) {
     console.error('Error creating game:', error);
+    console.error('Error details:', error.response?.data);
     res.status(500).json({
       success: false,
       error: 'Failed to create game',
