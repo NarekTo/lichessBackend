@@ -26,6 +26,10 @@ jobs:
         sed -i "s|your_jwt_secret|${{ secrets.JWT_SECRET }}|g" app.yaml
         sed -i "s|your_frontend_url|${{ secrets.FRONTEND_URL }}|g" app.yaml
 
+    - name: Create App Engine application
+      run: |
+        gcloud app create --region=us-central || true
+
     - name: Deploy to App Engine
       run: |
         gcloud app deploy app.yaml --quiet 
