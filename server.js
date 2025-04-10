@@ -17,13 +17,10 @@ app.use(compression());
 
 // Define allowed origins
 const allowedOrigins = [
-  // Development URLs
   'http://localhost:3000',
   'http://localhost:8080',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:8080',
-  
-  // Production URLs (without trailing slashes)
   'https://lichess-chess-nexus.lovable.app',
   'https://lovable.dev',
   'https://breakroomchess.com',
@@ -44,31 +41,35 @@ const io = new Server(server, {
 app.use(express.json());
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow requests with no origin
     if (!origin) return callback(null, true);
     
-    console.log('Request origin:', origin); // Add logging
+    console.log('Request origin:', origin);
     
-    // Check if the origin or its base path is allowed
+    // Check if origin matches any allowed origin
     const isAllowed = allowedOrigins.some(allowedOrigin => 
-      origin.startsWith(allowedOrigin)
+      origin === allowedOrigin || origin.startsWith(allowedOrigin)
     );
     
     if (!isAllowed) {
       console.log('Blocked origin:', origin);
-      return callback(new Error('CORS not allowed'), false);
+      return callback(null, false);
     }
     
     return callback(null, true);
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
-  credentials: true,
-  maxAge: 86400 // Cache preflight requests for 24 hours
+  credentials: false // Set to false since we're not using credentials
 }));
 
-// Handle preflight requests
-app.options('*', cors());
+// Add CORS headers to all responses
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
+  next();
+});
 
 // At the top of the file, after requiring dependencies
 const inMemoryGames = new Map();
@@ -261,73 +262,132 @@ app.get('/api/chess/game/:gameId', async (req, res) => {
 });
 
 // Update the create game endpoint
+// Update the create game endpoint to better handle Lichess API integration
 app.post('/api/chess/create-game', async (req, res) => {
   try {
     console.log('Received create game request');
     
-    const defaultTimeControl = {
-      time: 600,
-      increment: 5
+    // Validate Lichess token
+    if (!process.env.LICHESS_TOKEN) {
+      console.error('LICHESS_TOKEN is missing');
+      return res.status(500).json({
+        success: false,
+        error: 'Lichess token not configured'
+      });
+    }
+
+    // Default game settings
+    const gameSettings = {
+      rated: false,
+      clock: {
+        limit: 600,  // 10 minutes
+        increment: 5 // 5 second increment
+      },
+      variant: 'standard',
+      color: 'random',
+      rules: 'noClaimWin' // Don't auto-claim win on disconnect
     };
 
-    console.log('Creating Lichess challenge...');
+    // Allow customization from frontend
+    if (req.body.timeControl) {
+      const [minutes, increment] = req.body.timeControl.split('+').map(Number);
+      gameSettings.clock.limit = minutes * 60;
+      gameSettings.clock.increment = increment;
+    }
+
+    if (req.body.variant) {
+      gameSettings.variant = req.body.variant;
+    }
+
+    console.log('Creating game with settings:', gameSettings);
+
+    // Create challenge on Lichess
     const response = await axios.post(
       'https://lichess.org/api/challenge/open',
-      {
-        rated: false,
-        clock: {
-          limit: defaultTimeControl.time,
-          increment: defaultTimeControl.increment
-        },
-        variant: 'standard',
-        color: 'random'
-      },
+      gameSettings,
       {
         headers: {
           'Authorization': `Bearer ${process.env.LICHESS_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: 10000 // 10 second timeout
       }
     );
 
-    console.log('Lichess response:', response.data);
+    console.log('Lichess API response:', response.data);
 
-    // Generate unique tokens
+    // Validate response
+    if (!response.data?.id) {
+      throw new Error('Invalid response from Lichess API - no game ID');
+    }
+
+    // Generate tokens for players
     const whiteToken = uuidv4();
     const blackToken = uuidv4();
 
-    // Save game
-    inMemoryGames.set(response.data.id, {
+    // Create game data object
+    const gameData = {
       id: response.data.id,
+      status: 'created',
+      createdAt: new Date(),
+      url: `https://lichess.org/${response.data.id}`,
+      whiteUrl: `https://lichess.org/${response.data.id}/white?token=${whiteToken}`,
+      blackUrl: `https://lichess.org/${response.data.id}/black?token=${blackToken}`,
+      spectatorUrl: `https://lichess.org/${response.data.id}`,
       whiteToken,
       blackToken,
-      whiteConnected: false,
-      blackConnected: false,
-      status: 'waiting',
-      createdAt: new Date()
-    });
-
-    const result = {
-      success: true,
-      gameId: response.data.id,
-      whiteUrl: `${process.env.FRONTEND_URL}/game/${response.data.id}/white?token=${whiteToken}`,
-      blackUrl: `${process.env.FRONTEND_URL}/game/${response.data.id}/black?token=${blackToken}`,
-      spectatorUrl: `${process.env.FRONTEND_URL}/game/${response.data.id}`
+      timeControl: gameSettings.clock,
+      variant: gameSettings.variant
     };
 
-    console.log('Sending response:', result);
-    res.json(result);
+    // Store in memory
+    inMemoryGames.set(gameData.id, gameData);
+
+    // Store in MongoDB if connected
+    if (isDbConnected) {
+      try {
+        await new ChessGame({
+          id: gameData.id,
+          status: 'created',
+          createdAt: new Date(),
+          url: gameData.url,
+          whiteToken: gameData.whiteToken,
+          blackToken: gameData.blackToken,
+          timeControl: gameData.timeControl,
+          variant: gameData.variant
+        }).save();
+      } catch (dbError) {
+        console.error('MongoDB save error:', dbError);
+      }
+    }
+
+    // Send success response
+    return res.json({
+      success: true,
+      gameId: gameData.id,
+      whiteUrl: gameData.whiteUrl,
+      blackUrl: gameData.blackUrl,
+      spectatorUrl: gameData.spectatorUrl,
+      game: gameData
+    });
 
   } catch (error) {
     console.error('Error creating game:', error);
-    console.error('Error details:', error.response?.data);
-    res.status(500).json({
+    
+    // Extract error details from Lichess response if available
+    const errorDetails = error.response?.data?.error || 
+                        error.response?.data?.message || 
+                        error.message;
+    
+    return res.status(500).json({
       success: false,
       error: 'Failed to create game',
-      details: error.response?.data || error.message
+      details: errorDetails
     });
   }
 });
+
 
 app.get('/api/chess/game/:gameId/validate-token', (req, res) => {
   try {
