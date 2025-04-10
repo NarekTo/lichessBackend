@@ -20,7 +20,6 @@ jobs:
         project_id: '${{ secrets.GCP_PROJECT_ID }}'
         create_credentials_file: true
         export_environment_variables: true
-        service_account_email: lichess-connector-account@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com
 
     - name: Set up gcloud Cloud SDK environment
       uses: google-github-actions/setup-gcloud@v2.1.4
@@ -28,11 +27,11 @@ jobs:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
         install_components: 'beta,app-engine-python'
 
-    - name: Verify authentication and project
+    - name: Verify authentication
       run: |
         gcloud auth list
         gcloud config list project
-        gcloud projects get-iam-policy ${{ secrets.GCP_PROJECT_ID }}
+        gcloud info
 
     - name: Update app.yaml with secrets
       run: |
