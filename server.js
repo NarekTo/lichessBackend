@@ -19,10 +19,11 @@ app.use(compression());
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:8080',
-  'https://lichess-chess-nexus.lovable.app/',  // Add your production frontend URL
-  'https://breakroomchess.com/',  // Add your production frontend URL
+  'https://lichess-chess-nexus.lovable.app',  // Remove trailing slash
+  'https://breakroomchess.com',  // Remove trailing slash
   'http://127.0.0.1:3000',
-  'http://127.0.0.1:8080'
+  'http://127.0.0.1:8080',
+  'https://lichessconnector.ey.r.appspot.com'  // Add App Engine URL
 ];
 
 // Socket.io Configuration with updated CORS
@@ -42,7 +43,10 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) === -1) {
+    // Remove any trailing slashes from the origin
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
+    if (allowedOrigins.indexOf(normalizedOrigin) === -1) {
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
     }
