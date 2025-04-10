@@ -23,8 +23,4 @@ handlers:
     script: auto
     secure: always
 
-env: standard
-
-# Add VPC access configuration if needed
-vpc_access_connector:
-  name: projects/lichessconnector/locations/europe-west3/connectors/app-connector 
+env: standard 
