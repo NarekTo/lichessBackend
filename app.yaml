@@ -1,11 +1,13 @@
 runtime: nodejs18
 
+service_account: lichessconnector@appspot.gserviceaccount.com
+
 env_variables:
-  MONGODB_URI: "your_mongodb_uri"
-  LICHESS_TOKEN: "your_lichess_token"
-  JWT_SECRET: "your_jwt_secret"
-  PORT: "5001"
-  FRONTEND_URL: "your_frontend_url"
+  MONGODB_URI: "mongodb+srv://NarekBrc:Halabyan_brc@breakroomcupcluster.uudts.mongodb.net/?retryWrites=true&w=majority"
+  LICHESS_TOKEN: "lip_TZezCbtaq5O1tmgXrYmM"
+  JWT_SECRET: "lip_TZezCbtaq5O1tmgXrYmM"
+  PORT: "8080"
+  FRONTEND_URL: "https://lichess-chess-nexus.lovable.app"
 
 instance_class: F1
 
@@ -13,8 +15,11 @@ automatic_scaling:
   target_cpu_utilization: 0.65
   min_instances: 1
   max_instances: 10
+  target_throughput_utilization: 0.6
 
 handlers:
   - url: /.*
     script: auto
-    secure: always 
+    secure: always
+
+env: standard 

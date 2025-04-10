@@ -19,6 +19,8 @@ app.use(compression());
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:8080',
+  'https://lichess-chess-nexus.lovable.app/',  // Add your production frontend URL
+  'https://breakroomchess.com/',  // Add your production frontend URL
   'http://127.0.0.1:3000',
   'http://127.0.0.1:8080'
 ];
@@ -114,7 +116,7 @@ const startServer = async () => {
     }
 
     // Start server immediately
-    const PORT = process.env.PORT || 5001;
+    const PORT = process.env.PORT || 8080;
     server.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
         serverStarted = true;
